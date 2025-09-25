@@ -63,11 +63,12 @@ class Model(object):
 
         Returns: 
             Layer Classification (int):
-                1.) Surface Level
-                2.) Lower Troposphere
-                3.) Upper Troposphere
+                0.) Surface Level
+                1.) Lower Troposphere
+                2.) Upper Troposphere
+                3.) Tropopause
                 4.) Lower Stratosphere
-                5.) Upper Stratosphere
+                5.) Stratosphere
         """
 
         # Read data as a numpy array
