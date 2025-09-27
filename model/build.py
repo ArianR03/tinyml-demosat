@@ -83,7 +83,7 @@ class Model(object):
         # Return the predicted layer classification
         return predicted_layer
     
-    def convert_model_to_tflite(self) -> object:
+    def convert_model_to_tflite(self) -> bytes:
         """
         This method is used for converting a TensorFlow model into a TensorFlow Lite which 
         is used to deploy on Microcontrollers (Arduino Nano 33 BLE Sense Rev2). This TFLite 
@@ -177,9 +177,6 @@ class Model(object):
             file.write(self.hex_to_c_arr(self.convert_model_to_tflite(), c_model_name))
 
 if __name__ ==  "__main__":
-    
-    # Train model for Layer Classification
-    trained_model = Model.train_model()
 
     # Call Model Object
     model = Model()
