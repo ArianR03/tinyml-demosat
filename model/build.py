@@ -3,6 +3,7 @@ from keras import layers, Sequential
 import pandas as pd
 import numpy as np
 from pathlib import Path
+import glob
 
 class Model(object):
 
@@ -28,8 +29,17 @@ class Model(object):
             model (object): Trained model
         """
 
-        # Read data from historical atmospheric payload (University of Wyoming Atmospheric Science Radiosonde Archive)
-        df = pd.read_csv(data)
+        model = Sequential([
+            layers.Dense(32, activation='relu', input_shape=(2,)),
+            layers.Dense(6, activation='softmax')
+        ])
+
+        # Prepare model for training and evaluation by compiling
+        model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+        csv_files = glob.glob("data/*.csv")
+
+        all_dfs = [pd.read_csv(f) for f in csv_files]
+        df = pd.concat(all_dfs, ignore_index=True)
 
         # Pass the features that the model will be trained off of
         features = ['pressure_hPa', 'temperature_C']
@@ -39,14 +49,7 @@ class Model(object):
         # What the model will be predicting
         y = df['layer']
 
-        model = Sequential([
-            layers.Dense(16, activation='relu', input_shape=(2,)),
-            layers.Dense(6, activation='softmax')
-        ])
-
-        # Prepare model for training and evaluation by compiling
-        model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-        model.fit(X, y, epochs=20, batch_size=32)
+        model.fit(X, y, epochs=200, batch_size=32, validation_split=0.2)
 
         return model
     
@@ -83,7 +86,7 @@ class Model(object):
         # Return the predicted layer classification
         return predicted_layer
     
-    def convert_model_to_tflite(self) -> bytes:
+    def convert_model_to_tflite(self, trained_model: object) -> bytes:
         """
         This method is used for converting a TensorFlow model into a TensorFlow Lite which 
         is used to deploy on Microcontrollers (Arduino Nano 33 BLE Sense Rev2). This TFLite 
@@ -98,9 +101,6 @@ class Model(object):
 
         # Declare model name for tflite file
         tflite_model_name = "layer_model"
-
-        # Get the trained model from train_model() method
-        trained_model = Model.train_model()
 
         # Initialize variable to be used to convert model
         converter = tf.lite.TFLiteConverter.from_keras_model(trained_model)
@@ -159,7 +159,7 @@ class Model(object):
 
         return c_str
     
-    def write_to_c(self):
+    def write_to_c(self, trained_model: object):
         """
         This method is used to use the hex_to_c_arr() method to write into 
         the C file containing the array. This is used for the Arduino Nano to 
@@ -174,13 +174,15 @@ class Model(object):
         c_model_name = "layer_model"
 
         with open(c_model_name + '.h', 'w') as file:
-            file.write(self.hex_to_c_arr(self.convert_model_to_tflite(), c_model_name))
+            file.write(self.hex_to_c_arr(self.convert_model_to_tflite(trained_model), c_model_name))
 
 if __name__ ==  "__main__":
 
     # Call Model Object
     model = Model()
 
+    trained_model = model.train_model()
+
     # Convert to TFLite model and write to C for Arduino
-    model.convert_model_to_tflite()
-    model.write_to_c()
+    model.convert_model_to_tflite(trained_model)
+    model.write_to_c(trained_model)
