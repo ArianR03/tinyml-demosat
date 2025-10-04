@@ -1,4 +1,5 @@
 import pandas as pd
+import glob
 
 def layer(alt) -> int:
     """
@@ -46,14 +47,19 @@ def assign_layer() -> pd.DataFrame:
         New Dataframe with atmospheric layer class
     """
 
-    # Read csv file with historical data | Reference: (University of Wyoming Atmospheric Science Radiosonde Archive)
-    df = pd.read_csv('data/data.csv')
+    csv_files = glob.glob("data/*.csv")
 
-    # Create a new column 'layer' and assign layer from respective height 
-    df['layer'] = df['geopotential height_m'].apply(layer)
+    for file in csv_files:
+        # Read csv file with historical data | Reference: (University of Wyoming Atmospheric Science Radiosonde Archive)
+        df = pd.read_csv(file)
 
-    # Write into csv and save
-    df.to_csv('data/data.csv', index=False)
+        # Create a new column 'layer' and assign layer from respective height 
+        df['layer'] = df['geopotential height_m'].apply(layer)
 
-    # Return new data
+        # Write into csv and save
+        df.to_csv(file, index=False)
+
     return df
+
+if __name__ == "__main__":
+    assign_layer().head()
