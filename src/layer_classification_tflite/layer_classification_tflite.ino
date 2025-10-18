@@ -2,7 +2,7 @@
   Atmospheric Layer Classification (TinyML Integration)
   DemoSat 2025
 
-  This programs intended purpose reads data from a BME280 enviornmental sensor
+  This programs intended purpose reads data from a BMP280 enviornmental sensor
   (pressure, temperature) and feeds it into a TensorFlow Lite model that will run on
   the Arduino Nano 33 BLE Sense Rev2. This model classifies the data in real-time into 
   one of several atmospheric "layers." These results are printed into serial and stored 
@@ -21,10 +21,16 @@
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
+#include <Arduino_BMI270_BMM150.h>
 #include "layer_model.h"
+
+#include <cmath>
+
+#define PROBLEM_LED 2
 
 // Create sensor object for BME280
 Adafruit_BME280 bme;
+unsigned long timeStamp;
 
 namespace{
   /*
@@ -43,7 +49,19 @@ namespace{
   TfLiteTensor* model_output = nullptr;
 
   constexpr int kTensorArenaSize = 5 * 1024;
-  uint8_t tensor_arena[kTensorArenaSize]; 
+  uint8_t tensor_arena[kTensorArenaSize];
+  
+  // Atmospheric Constants used to calculate altitude
+  constexpr float SEA_LEVEL_PRESSURE = 1013.25;
+  constexpr float LAPSE_RATE = 0.0065;
+  constexpr float EXPONENT = 0.190284;
+}
+
+void blink_led(){
+  digitalWrite(PROBLEM_LED, LOW);
+  delay(50);
+  digitalWrite(PROBLEM_LED, HIGH);
+  delay(50);
 }
 
 void setup() {
@@ -53,7 +71,16 @@ void setup() {
       - Load and verify TFLite model
   */
 
+  // USB Connection
   Serial.begin(9600);
+  
+  // UART Connection for storing data in OpenLog
+  Serial1.begin(9600);
+  Wire.begin();
+  delay(1000);
+
+  pinMode(PROBLEM_LED, OUTPUT);
+  digitalWrite(PROBLEM_LED, LOW);
 
   // Setup error reporter for error validation
   static tflite::MicroErrorReporter micro_error_reporter;
@@ -88,14 +115,24 @@ void setup() {
   model_output = interpreter->output(0);
 
   // Start up BME280
-  if (!bme.begin(0x77)){
-    Serial.println("BME280 not found. Retrying...");
+  while (!bme.begin(0x77)){
+    Serial.println("Failed to initalize BME280.");
+    blink_led();
   }
+  Serial.println("Initalized BME280.");
+  
+  while (!IMU.begin()){
+    Serial.println("Failed to initalize IMU sensor.");
+    blink_led();
+  }
+  Serial.println("Initalized IMU sensor.");
 
-  Serial.println("BME280 connected at 0x77");
+  // CSV Columns
+  Serial.println("\ntime,pressure,temp,alt_m,x_acc,y_acc,z_acc,predicted_layer");
+  Serial1.println("\ntime,pressure,temp,alt_m,x_acc,y_acc,z_acc,predicted_layer");
+  timeStamp = 0;
 
-  Serial.println("pressure,temp,predicted_layer");
-
+  digitalWrite(PROBLEM_LED, HIGH);
 }
 
 int argmax(const float* arr, int size){
@@ -105,7 +142,7 @@ int argmax(const float* arr, int size){
     in the parameter "arr." This will then go through and find the index of the 
     highest number and return it's index.
 
-    Args:
+    Parameters:
       - arr (const float*): model_output
       - size (int): Set by default (6)
 
@@ -128,16 +165,39 @@ int argmax(const float* arr, int size){
   return index;
 }
 
+float alt_m(float pressure, float temp){
+  /*
+    This method calculates the altitude (in meters above sea level)
+    from measured air pressure and temperature using the barometric formula:
+
+      Altitude (m) = ((Temperature (C) + 273.15) / 0.0065) * (1 - (Pressure (hPa) / 1013.25)^0.190284)
+
+    Parameters:
+      pressure (float): pressure in hPa
+      temp (float): temperature in C
+
+    Returns:
+      Altitude in m above sea level
+  */
+
+  return ((temp + 273.15) / LAPSE_RATE) * (1 - pow((pressure / SEA_LEVEL_PRESSURE), EXPONENT));
+}
+
 void loop() {
   /*
-    This methods purpose is to read the data from the BME280 sensor
+    This methods purpose is to read the data from the BMP280 sensor
     and load these values into the TFLite model to classify the data
     into an atmospheric layer in real-time.
   */
+  
+  timeStamp = millis();
+  float x, y, z;
 
   // Declare variables and read barometric sensor outputs
-  float pressure = bme.readPressure() / 100.0F;
+  float pressure = bme.readPressure() / 100.0;
   float temp = bme.readTemperature();
+  float altitude = alt_m(pressure, temp); 
+  IMU.readAcceleration(x,y,z);
 
   /*
     Reliable Data Collection
@@ -161,6 +221,7 @@ void loop() {
 
   // Iterate through each index of the output (length: 6, refer to build.py)
   // and store inside of prob array.
+
   for (int i = 0; i < 6; i++){
     prob[i] = model_output->data.f[i];
   }
@@ -169,10 +230,24 @@ void loop() {
   int layer_class = argmax(prob, 6);
 
   // Print out values and iterate loop().
-  Serial.print("Pressure: "); Serial.println(pressure);
-  Serial.print("Temp: "); Serial.println(temp);
-  Serial.print("Layer class: "); Serial.println(layer_class);
+  Serial.print(timeStamp); Serial.print(",");
+  Serial.print(pressure); Serial.print(",");
+  Serial.print(temp); Serial.print(",");
+  Serial.print(altitude); Serial.print(",");
+  Serial.print(x); Serial.print(",");
+  Serial.print(y); Serial.print(",");
+  Serial.print(z); Serial.print(",");
+  Serial.print(layer_class); Serial.println();
 
-  delay(2000);
+  // Store data into OpenLog sensor from UART connection.
+  Serial1.print(timeStamp); Serial1.print(",");
+  Serial1.print(pressure); Serial1.print(",");
+  Serial1.print(temp); Serial1.print(",");
+  Serial1.print(altitude); Serial1.print(",");
+  Serial1.print(x); Serial1.print(",");
+  Serial1.print(y); Serial1.print(",");
+  Serial1.print(z); Serial1.print(",");
+  Serial1.print(layer_class); Serial1.println();
+
+  delay(1000);
 }
-
