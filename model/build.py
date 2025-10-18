@@ -7,7 +7,8 @@ import glob
 
 class Model(object):
 
-    def train_model(data: Path='data/data.csv') -> object:
+    @staticmethod
+    def train_model(data: Path='data/*.csv') -> object:
         """
         Layer Atmospheric Classification Model
 
@@ -36,8 +37,11 @@ class Model(object):
 
         # Prepare model for training and evaluation by compiling
         model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-        csv_files = glob.glob("data/*.csv")
 
+        # Read file location and grab each csv file
+        csv_files = glob.glob(data)
+
+        # Read each csv from data folder
         all_dfs = [pd.read_csv(f) for f in csv_files]
         df = pd.concat(all_dfs, ignore_index=True)
 
@@ -49,10 +53,11 @@ class Model(object):
         # What the model will be predicting
         y = df['layer']
 
-        model.fit(X, y, epochs=200, batch_size=32, validation_split=0.2)
+        model.fit(X, y, epochs=50, batch_size=32, validation_split=0.2)
 
         return model
     
+    @staticmethod
     def prediction_layer(input_data, model: object) -> int:
         """
         This method is primarily used to test the model itself. Passing in the data
@@ -181,6 +186,7 @@ if __name__ ==  "__main__":
     # Call Model Object
     model = Model()
 
+    # Train model
     trained_model = model.train_model()
 
     # Convert to TFLite model and write to C for Arduino
