@@ -120,12 +120,14 @@ void setup() {
     blink_led();
   }
   Serial.println("Initalized BME280.");
+  Serial1.println("Initalized BME280.");
   
   while (!IMU.begin()){
     Serial.println("Failed to initalize IMU sensor.");
     blink_led();
   }
   Serial.println("Initalized IMU sensor.");
+  Serial1.println("Initalized IMU sensor.");
 
   // CSV Columns
   Serial.println("\ntime,pressure,temp,alt_m,x_acc,y_acc,z_acc,predicted_layer");
@@ -249,5 +251,5 @@ void loop() {
   Serial1.print(z); Serial1.print(",");
   Serial1.print(layer_class); Serial1.println();
 
-  delay(1000);
+  delay(500);
 }
