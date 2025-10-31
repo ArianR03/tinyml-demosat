@@ -19,7 +19,7 @@ def layer(alt) -> int:
         [2]: Upper Troposphere
         [3]: Tropopause
         [4]: Lower Stratosphere
-        [5]: Upper Stratosphere
+        [5]: Stratosphere
     """
     if alt <= 2000:
         return 0
@@ -46,7 +46,7 @@ def assign_layer() -> pd.DataFrame:
     Returns:
         New Dataframe with atmospheric layer class
     """
-
+    
     csv_files = glob.glob("data/*.csv")
 
     for file in csv_files:
@@ -62,4 +62,4 @@ def assign_layer() -> pd.DataFrame:
     return df
 
 if __name__ == "__main__":
-    assign_layer().head()
+    assign_layer()
