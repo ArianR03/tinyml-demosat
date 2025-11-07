@@ -8,7 +8,7 @@ import glob
 class Model(object):
 
     @staticmethod
-    def train_model(data: Path='data/*.csv') -> object:
+    def train_model(data: Path='data/historical/*.csv') -> object:
         """
         Layer Atmospheric Classification Model
 
