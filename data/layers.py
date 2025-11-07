@@ -47,7 +47,7 @@ def assign_layer() -> pd.DataFrame:
         New Dataframe with atmospheric layer class
     """
     
-    csv_files = glob.glob("data/*.csv")
+    csv_files = glob.glob("data/historical/*.csv")
 
     for file in csv_files:
         # Read csv file with historical data | Reference: (University of Wyoming Atmospheric Science Radiosonde Archive)
