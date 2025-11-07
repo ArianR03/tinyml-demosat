@@ -3,3 +3,4 @@ six==1.17.0
 tensorflow==2.20.0
 keras==3.11.3
 numpy==2.0.0
+matplotlib==3.10.1
