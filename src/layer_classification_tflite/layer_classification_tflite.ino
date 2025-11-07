@@ -251,5 +251,5 @@ void loop() {
   Serial1.print(z); Serial1.print(",");
   Serial1.print(layer_class); Serial1.println();
 
-  delay(500);
+  delay(1000);
 }
